@@ -35,4 +35,4 @@ The Rack application keeps around a pool of R processes that are waiting on a JS
 
 The reasoning behind having a pool of waiting R processes is so that the client doesn't need to wait for the R process to start up.
 
-The pipe-based communication is achieved using `IO.pipe` on the Ruby side, and `file('/dev/sd/[0-9]+', raw=T)` on the R side.
+The pipe-based communication is achieved using `IO.pipe` on the Ruby side, and `file('/dev/sd/n', raw=T)` on the R side, when `n` is the file descriptor number found via the Ruby IO object's `fileio` attribute.
