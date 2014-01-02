@@ -62,10 +62,10 @@ class RESTR
       "Access-Control-Allow-Headers" => env['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'],
       "Access-Control-Allow-Methods" => env['HTTP_ACCESS_CONTROL_REQUEST_METHOD']
     }), []] if req.options?
-    path = req.path.split('/').map {|e| Rack::Utils::unescape e }.drop 1
-    namespace, function, *args = path
+    _, namespace, function, *args = req.path_info.split('/').map {|e| Rack::Utils::unescape e}
     return [404, h, []] unless @r_namespaces.empty? || @r_namespaces.include?(namespace)
-    opts, named_args = req.GET.partition{|k,v| k =~ /^_/}.map{|p| Hash[p]}
+    ignore_params = env['HTTP_IGNORE_PARAMS'].split(',').map{|p|p.strip} rescue []
+    named_args = Hash[req.params.reject{|k,v| ignore_params.include? k}]
     args, named_args = [args, named_args].map{|v| numerify v}
     r_exitstatus, r_output, data_output = @rq.pop.call namespace, function, args, named_args
     if r_exitstatus != 0
