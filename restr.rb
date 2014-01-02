@@ -1,15 +1,6 @@
-#!/usr/bin/env ruby
-
 require 'logger'
 require 'json'
 require 'rack'
-require 'rack/cors'
-
-LOG = Logger.new STDERR
-LOG.level = Logger::DEBUG
-PORT = 6312
-R_NAMESPACES = ['mbplimsr']
-R_POOL_SIZE = 7
 
 class R
   def initialize
@@ -52,8 +43,11 @@ class R
 end
 
 class RESTR
-  def initialize
-    @rq = SizedQueue.new R_POOL_SIZE
+  R_POOL_SIZE = 7
+  def initialize(r_namespaces, r_pool_size:R_POOL_SIZE, log:Logger.new(STDERR))
+    @r_namespaces = r_namespaces
+    @log = log
+    @rq = SizedQueue.new r_pool_size
     Thread.new{loop{@rq<<R.new}}
   end
   def numerify v
@@ -63,29 +57,23 @@ class RESTR
   end
   def call(env)
     req = Rack::Request.new env
+    h = {"Access-Control-Allow-Origin" => "*"}
+    return [HTTP_OK, h.merge({
+      "Access-Control-Allow-Headers" => env['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'],
+      "Access-Control-Allow-Methods" => env['HTTP_ACCESS_CONTROL_REQUEST_METHOD']
+    }), []] if req.options?
     path = req.path.split('/').map {|e| Rack::Utils::unescape e }.drop 1
     namespace, function, *args = path
-    return [404, {}, []] if !R_NAMESPACES.include? namespace
+    return [404, h, []] unless @r_namespaces.empty? || @r_namespaces.include?(namespace)
     opts, named_args = req.GET.partition{|k,v| k =~ /^_/}.map{|p| Hash[p]}
     args, named_args = [args, named_args].map{|v| numerify v}
     r_exitstatus, r_output, data_output = @rq.pop.call namespace, function, args, named_args
     if r_exitstatus != 0
-      r_output.lines {|line| LOG.error line.chomp}
-      [500, {"Content-Type" => "text/plain"}, ['R Error']]
+      r_output.lines {|line| @log.error line.chomp}
+      [500, h.merge({"Content-Type" => "text/plain"}), ['R Error']]
     else
-      r_output.lines {|line| LOG.warn line.chomp}
-      [200, {"Content-Type" => "application/json"}, [data_output]]
+      r_output.lines {|line| @log.warn line.chomp}
+      [200, h.merge({"Content-Type" => "application/json"}), [data_output]]
     end
   end
 end
-
-app = Rack::Builder.new do
-  use Rack::Cors do
-    allow do
-      origins '*'
-      resource '*', :headers => :any, :methods => [:get]
-    end
-  end
-  run RESTR.new
-end
-Rack::Server.start(app: app, Port: PORT)
