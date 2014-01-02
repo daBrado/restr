@@ -50,11 +50,6 @@ class RESTR
     @rq = SizedQueue.new r_pool_size
     Thread.new{loop{@rq<<R.new}}
   end
-  def numerify v
-    Hash[v.each_pair.map{|k,v| [k, numerify(v)]}] rescue
-      v.map{|v| numerify v} rescue
-        Integer(v) rescue Float(v) rescue v
-  end
   def call(env)
     req = Rack::Request.new env
     h = {"Access-Control-Allow-Origin" => "*"}
@@ -66,7 +61,8 @@ class RESTR
     return [404, h, []] unless @r_namespaces.empty? || @r_namespaces.include?(namespace)
     ignore_params = env['HTTP_IGNORE_PARAMS'].split(',').map{|p|p.strip} rescue []
     named_args = Hash[req.params.reject{|k,v| ignore_params.include? k}]
-    args, named_args = [args, named_args].map{|v| numerify v}
+    numerify = lambda{|v| Hash[v.each_pair.map{|k,v| [k, numerify[v]]}] rescue v.map{|v| numerify[v]} rescue Integer(v) rescue Float(v) rescue v}
+    args, named_args = [args, named_args].map{|v| numerify[v]}
     r_exitstatus, r_output, data_output = @rq.pop.call namespace, function, args, named_args
     if r_exitstatus != 0
       r_output.lines {|line| @log.error line.chomp}
