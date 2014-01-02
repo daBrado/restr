@@ -2,20 +2,25 @@
 
 Provide a simple RESTful interface to R, with results returned as a JSON-encoded string.
 
-The server is a Ruby Rack application.
+The server is provided as a Ruby Rack application, and a rackup config.
 
 ## Requirements
 
-For Ruby, you will need the following gems:
+For Ruby, Bundler will take care of the requirements.
 
-- `rack`
-- `rack-cors`
+For R, you will need the `rjson` package, and the R binary will need to be in your path.
 
-For R, you will need the following package:
+## Install
 
-- `rjson`
+To install for deployment, you can do:
 
-Additionally, the R binary should be in your path so that the Ruby script can find it.
+    RUBY=/path/to/ruby
+    $RUBY/bin/gem install bundler -i vendor/gem -n bin
+    bin/bundle install --deployment --binstubs --shebang $RUBY/bin/ruby
+
+Then to run, you can use the installed rackup executable, e.g.:
+
+    bin/rackup -E production -p 6312
 
 ## Usage
 
@@ -31,8 +36,14 @@ this will return `[1,2,3]`, i.e. is equivalent to the result of `base::c(1,2,3)`
 
 ## Details
 
-The Rack application keeps around a pool of R processes that are waiting on a JSON-encoded command to come in on a pipe.  Once the Rack app receives a request, it converts it to a JSON-encoded command and sends it along that pipe, and then waits for the process to terminate.  The R process runs the requested function, encodes the output as JSON (via `rjson`), and delivers that string to another pipe, and exits.  The Rack app pulls the JSON string from that pipe, and delivers it to the client.  Meanwhile, another thread puts a new R process in the pool to replace the exited one.
+The Rack app keeps around a pool of R processes that are waiting on a JSON-encoded command to come in on a pipe.
 
-The reasoning behind having a pool of waiting R processes is so that the client doesn't need to wait for the R process to start up.
+Once the Rack app receives a request, it converts it to a JSON-encoded command and sends it along the pipe, and then waits for the process to terminate.
 
-The pipe-based communication is achieved using `IO.pipe` on the Ruby side, and `file('/dev/sd/n', raw=T)` on the R side, when `n` is the file descriptor number found via the Ruby IO object's `fileio` attribute.
+The R process decodes the JSON and runs the requested function, encodes the output as JSON, and delivers that string to another pipe, and exits.
+
+The Rack app pulls the JSON string from the return pipe, and delivers it to the client.  Meanwhile, another thread puts a new R process in the pool to replace the exited one.
+
+By having a pool of waiting R processes, the client doesn't need to wait for an R process to start up.
+
+The pipe-based communication is achieved using `IO.pipe` on the Ruby side, and `file('/dev/sd/n', raw=T)` on the R side, where `n` is the file descriptor number found via the Ruby IO object's `fileio` attribute.
