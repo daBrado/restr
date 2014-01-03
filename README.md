@@ -2,7 +2,9 @@
 
 Provide a simple RESTful interface to R, with results returned as a JSON-encoded string.
 
-The server is provided as a Ruby Rack application, and a rackup config.
+It is implemented as a Ruby Rack application with a rackup config.
+
+The use case being designed for is to have all the needed R functionality exposed by a custom R package and namespace whose functions are meant to be called from the web.  RESTR then acts as the glue between the R side and the web side.
 
 ## Requirements
 
