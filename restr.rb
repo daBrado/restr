@@ -2,6 +2,10 @@ require 'logger'
 require 'json'
 require 'rack'
 
+HTTP_OK = 200
+HTTP_NOT_FOUND = 404
+HTTP_INTERNAL_SERVER_ERROR = 500
+
 class R
   def initialize
     r_cmd_read, r_cmd_write = IO.pipe
@@ -58,7 +62,7 @@ class RESTR
       "Access-Control-Allow-Methods" => env['HTTP_ACCESS_CONTROL_REQUEST_METHOD']
     }), []] if req.options?
     _, namespace, function, *args = req.path_info.split('/').map {|e| Rack::Utils::unescape e}
-    return [404, h, []] unless @r_namespaces.empty? || @r_namespaces.include?(namespace)
+    return [HTTP_NOT_FOUND, h, []] unless @r_namespaces.empty? || @r_namespaces.include?(namespace)
     ignore_params = env['HTTP_IGNORE_PARAMS'].split(',').map{|p|p.strip} rescue []
     named_args = Hash[req.params.reject{|k,v| ignore_params.include? k}]
     numerify = lambda{|v| Hash[v.each_pair.map{|k,v| [k, numerify[v]]}] rescue v.map{|v| numerify[v]} rescue Integer(v) rescue Float(v) rescue v}
@@ -66,10 +70,10 @@ class RESTR
     r_exitstatus, r_output, data_output = @rq.pop.call namespace, function, args, named_args
     if r_exitstatus != 0
       r_output.lines {|line| @log.error line.chomp}
-      [500, h.merge({"Content-Type" => "text/plain"}), ['R Error']]
+      [HTTP_INTERNAL_SERVER_ERROR, h.merge({"Content-Type" => "text/plain"}), ['R Error']]
     else
       r_output.lines {|line| @log.warn line.chomp}
-      [200, h.merge({"Content-Type" => "application/json"}), [data_output]]
+      [HTTP_OK, h.merge({"Content-Type" => "application/json"}), [data_output]]
     end
   end
 end
