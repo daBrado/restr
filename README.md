@@ -17,8 +17,7 @@ For R, you will need the `rjson` package, and the R binary will need to be in yo
 To install for deployment, you can do:
 
     RUBY=/path/to/ruby
-    $RUBY/bin/gem install bundler -i vendor/gem -n bin
-    bin/bundle install --deployment --binstubs --shebang $RUBY/bin/ruby
+    $RUBY/bin/bundle install --deployment --binstubs --shebang $RUBY/bin/ruby
 
 Then to run, you can use the installed rackup executable, e.g.:
 
