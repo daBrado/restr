@@ -1,4 +1,3 @@
-require 'logger'
 require 'json'
 require 'rack'
 
@@ -47,11 +46,10 @@ class R
 end
 
 class RESTR
-  R_POOL_SIZE = 7
-  def initialize(r_namespaces, r_pool_size:R_POOL_SIZE, log:Logger.new(STDERR))
+  def initialize(r_namespaces, r_pool_size, log)
     @r_namespaces = r_namespaces
-    @log = log
     @rq = SizedQueue.new r_pool_size
+    @log = log
     Thread.new{loop{@rq<<R.new}}
   end
   def call(env)

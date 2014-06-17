@@ -1,6 +1,6 @@
-R_NAMESPACES = []  # Empty gives access to *all* namespaces
-
+require 'logger'
+require_relative 'config'
+require_relative 'restr'
 require 'rubygems'
 require 'bundler/setup'
-require './restr'
-run RESTR.new(R_NAMESPACES)
+run RESTR.new(R_NAMESPACES, R_POOL_SIZE, LOG)
