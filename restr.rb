@@ -68,7 +68,7 @@ class RESTR
     r_exitstatus, r_output, data_output = @rq.pop.call namespace, function, args, named_args
     if r_exitstatus != 0
       r_output.lines {|line| @log.error line.chomp}
-      [HTTP_INTERNAL_SERVER_ERROR, h.merge({"Content-Type" => "text/plain"}), ['R Error']]
+      [HTTP_INTERNAL_SERVER_ERROR, h.merge({"Content-Type" => "text/plain"}), r_output.lines]
     else
       r_output.lines {|line| @log.warn line.chomp}
       [HTTP_OK, h.merge({"Content-Type" => "application/json"}), [data_output]]
