@@ -6,14 +6,14 @@ HTTP_NOT_FOUND = 404
 HTTP_INTERNAL_SERVER_ERROR = 500
 
 class R
-  def initialize
+  def initialize(r_cmd=['R'])
     r_cmd_read, r_cmd_write = IO.pipe
     @r_out_read, @r_out_write = IO.pipe
     @cmd_read, @cmd_write = IO.pipe
     @data_read, @data_write = IO.pipe
     @r_exitstatus = nil
     @r_pid = spawn(
-      'R', '--vanilla', '--slave',
+      *r_cmd, '--vanilla', '--slave',
       :in => r_cmd_read,
       [:out, :err] => @r_out_write,
       @cmd_read => @cmd_read,
@@ -46,11 +46,11 @@ class R
 end
 
 class RESTR
-  def initialize(r_namespaces, r_pool_size, log)
+  def initialize(r_cmd, r_namespaces, r_pool_size, log)
     @r_namespaces = r_namespaces
     @rq = SizedQueue.new r_pool_size
     @log = log
-    Thread.new{loop{@rq<<R.new}}
+    Thread.new{loop{@rq<<R.new(r_cmd)}}
   end
   def call(env)
     req = Rack::Request.new env
